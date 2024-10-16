@@ -5,7 +5,6 @@ import java.util.Map;
 
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.SimpleTexture;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureMap;
 
 import javax.annotation.Nullable;
@@ -15,7 +14,7 @@ public class PBRTextureLoaderRegistry {
 
 	static {
 		INSTANCE.register(SimpleTexture.class, new SimplePBRLoader());
-		INSTANCE.register(TextureMap.class, new AtlasPBRLoader());
+		//INSTANCE.register(TextureMap.class, new AtlasPBRLoader());
 	}
 
 	private final Map<Class<?>, PBRTextureLoader<?>> loaderMap = new HashMap<>();

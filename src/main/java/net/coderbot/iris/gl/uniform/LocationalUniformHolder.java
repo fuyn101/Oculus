@@ -6,13 +6,12 @@ import java.util.function.DoubleSupplier;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
-import com.mojang.math.Matrix4f;
-
 import net.coderbot.iris.vendored.joml.Vector2f;
 import net.coderbot.iris.vendored.joml.Vector2i;
 import net.coderbot.iris.vendored.joml.Vector3d;
 import net.coderbot.iris.vendored.joml.Vector3f;
 import net.coderbot.iris.vendored.joml.Vector4f;
+import net.minecraft.client.renderer.Matrix4f;
 
 public interface LocationalUniformHolder extends UniformHolder {
 	LocationalUniformHolder addUniform(UniformUpdateFrequency updateFrequency, Uniform uniform);
@@ -76,7 +75,7 @@ public interface LocationalUniformHolder extends UniformHolder {
 	}
 
 	@Override
-	default LocationalUniformHolder uniformVanilla3f(UniformUpdateFrequency updateFrequency, String name, Supplier<com.mojang.math.Vector3f> value) {
+	default LocationalUniformHolder uniformVanilla3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3f> value) {
 		location(name, UniformType.VEC3).ifPresent(id -> addUniform(updateFrequency, new VanillaVector3Uniform(id, value)));
 
 		return this;

@@ -1,35 +1,35 @@
 package net.coderbot.iris.mixin.gui;
 
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
-
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.coderbot.iris.gui.option.ShaderPackSelectionButtonOption;
-import net.minecraft.client.Option;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.VideoSettingsScreen;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiOptions;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiVideoSettings;
+import net.minecraft.client.settings.GameSettings;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(VideoSettingsScreen.class)
-public abstract class MixinVideoSettingsScreen extends Screen {
-	protected MixinVideoSettingsScreen(Component title) {
-		super(title);
+import java.util.ArrayList;
+import java.util.List;
+
+@Mixin(GuiVideoSettings.class)
+public abstract class MixinVideoSettingsScreen extends GuiScreen {
+	@Unique
+	private final GameSettings settings;
+
+	public MixinVideoSettingsScreen(GameSettings settings) {
+		this.settings = settings;
 	}
 
-	@ModifyArg(
-			method = "init",
-			at = @At(
-					value = "INVOKE",
-					target = "Lnet/minecraft/client/gui/components/OptionsList;addSmall([Lnet/minecraft/client/Option;)V"
-			),
-			index = 0
-	)
-	private Option[] iris$addShaderPackScreenButton(Option[] old) {
-		Option[] options = new Option[old.length + 2];
-		System.arraycopy(old, 0, options, 0, old.length);
-		options[options.length - 2] = new ShaderPackSelectionButtonOption((VideoSettingsScreen)(Object)this, this.minecraft);
-		options[options.length - 1] = IrisVideoSettings.RENDER_DISTANCE;
-		return options;
+	@Inject(method = "initGui", at = @At("RETURN"))
+	private void iris$addShaderPackScreenButton(CallbackInfo ci) {
+		// Add our custom buttons after the original initGui has executed
+		this.buttonList.add(new ShaderPackSelectionButtonOption(this, this.mc));
+		this.buttonList.add(IrisVideoSettings.RENDER_DISTANCE.createButton(this.mc.gameSettings, this.width / 2 - 155, this.height / 6 + 24 * (this.buttonList.size() / 2), 150));
 	}
 }

@@ -26,7 +26,7 @@ import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.mixin.GlStateManagerAccessor;
-import net.coderbot.iris.mixin.LevelRendererAccessor;
+import net.coderbot.iris.mixin.RenderGlobalAccessor;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.postprocess.BufferFlipper;
@@ -34,7 +34,7 @@ import net.coderbot.iris.postprocess.CenterDepthSampler;
 import net.coderbot.iris.postprocess.CompositeRenderer;
 import net.coderbot.iris.postprocess.FinalPassRenderer;
 import net.coderbot.iris.rendertarget.Blaze3dRenderTargetExt;
-import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
+import net.coderbot.iris.rendertarget.BufferedImageBackedSingleColorTexture;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.samplers.IrisImages;
 import net.coderbot.iris.samplers.IrisSamplers;
@@ -197,7 +197,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		customTextureManager = new CustomTextureManager(programs.getPackDirectives(), programs.getPack().getCustomTextureDataMap(), programs.getPack().getCustomNoiseTexture());
 
-		whitePixel = new NativeImageBackedSingleColorTexture(255, 255, 255, 255);
+		whitePixel = new BufferedImageBackedSingleColorTexture(255, 255, 255, 255);
 
 		GlStateManager.setActiveTexture(GL13.GL_TEXTURE0);
 
@@ -1063,7 +1063,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	@Override
-	public void renderShadows(LevelRendererAccessor levelRenderer, ICamera playerCamera) {
+	public void renderShadows(RenderGlobalAccessor worldRenderer, ICamera playerCamera) {
 		if (shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;
 
@@ -1075,7 +1075,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (shadowRenderer != null) {
 			isRenderingShadow = true;
 
-			shadowRenderer.renderShadows(levelRenderer, playerCamera);
+			shadowRenderer.renderShadows(worldRenderer, playerCamera);
 
 			// needed to remove blend mode overrides and similar
 			beginPass(null);
@@ -1120,7 +1120,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		isPostChain = false;
 		phase = WorldRenderingPhase.NONE;
 		overridePhase = null;
-		HandRenderer.INSTANCE.getBufferSource().resetDrawCalls();
 
 		checkWorld();
 

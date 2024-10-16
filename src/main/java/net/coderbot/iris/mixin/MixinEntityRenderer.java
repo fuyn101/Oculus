@@ -10,6 +10,8 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.renderer.Matrix4f;
+import net.minecraft.client.renderer.culling.ClippingHelperImpl;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.settings.GameSettings;
 import org.spongepowered.asm.mixin.Final;
@@ -23,7 +25,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EntityRenderer.class)
 public class MixinEntityRenderer {
-
     @Shadow
     @Final
     private Minecraft mc;
@@ -34,8 +35,8 @@ public class MixinEntityRenderer {
     // all pixels.
     @Inject(method = "renderWorldPass", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GlStateManager;clear(I)V", ordinal = 0, shift = At.Shift.AFTER))
     private void iris$beginLevelRender(int pass, float partialTicks, long finishTimeNano, CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setGbufferModelView(poseStack.last().pose());
-        CapturedRenderingState.INSTANCE.setGbufferProjection(projection);
+        CapturedRenderingState.INSTANCE.setGbufferModelView(new Matrix4f(ClippingHelperImpl.getInstance().modelviewMatrix));
+        CapturedRenderingState.INSTANCE.setGbufferProjection(new Matrix4f(ClippingHelperImpl.getInstance().projectionMatrix));
         CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
         SystemTimeUniforms.COUNTER.beginFrame();
         SystemTimeUniforms.TIMER.beginFrame(finishTimeNano);
@@ -52,7 +53,7 @@ public class MixinEntityRenderer {
     // render their waypoint beams.
     @Inject(method = "renderWorldPass", at = @At(value = "RETURN", shift = At.Shift.BEFORE))
     private void iris$endLevelRender(int pass, float partialTicks, long finishTimeNano, CallbackInfo ci) {
-        HandRenderer.INSTANCE.renderTranslucent(poseStack, tickDelta, camera, gameRenderer, pipeline);
+        HandRenderer.INSTANCE.renderTranslucent(partialTicks, this.mc.entityRenderer);
         mc.profiler.endStartSection("iris_final");
 
         RenderGlobalExtended renderGlobalExtended = (RenderGlobalExtended) this.mc.renderGlobal;
@@ -66,7 +67,7 @@ public class MixinEntityRenderer {
     // avoid breaking other mods such as Light Overlay: https://github.com/IrisShaders/Iris/issues/1356
     @Inject(method = "renderWorldPass", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;setupTerrain(Lnet/minecraft/entity/Entity;DLnet/minecraft/client/renderer/culling/ICamera;IZ)V"))
     private void iris$renderTerrainShadows(int pass, float partialTicks, long finishTimeNano, CallbackInfo ci, @Local ICamera icamera) {
-        ((RenderGlobalExtended) this.mc.renderGlobal).getPipeline().renderShadows((LevelRendererAccessor) this, icamera);
+        ((RenderGlobalExtended) this.mc.renderGlobal).getPipeline().renderShadows((RenderGlobalAccessor) this.mc.renderGlobal, icamera);
     }
 
     @Redirect(method = "renderWorldPass", at = @At(value = "FIELD", target = "Lnet/minecraft/client/settings/GameSettings;renderDistanceChunks:I"),

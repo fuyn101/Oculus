@@ -4,39 +4,44 @@ import java.util.Optional;
 
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
-import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
+import net.minecraft.util.text.ITextComponent;
+//import org.jetbrains.annotations.Nullable;
+import javax.annotation.Nullable;
+//import org.lwjgl.glfw.GLFW;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+//import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.shaderpack.option.menu.OptionMenuElement;
-import net.minecraft.ChatFormatting;
+//import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.resources.language.I18n;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.TextColor;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
-
-import javax.annotation.Nullable;
+//import net.minecraft.client.gui.Font;
+//import net.minecraft.client.gui.screens.Screen;
+//import net.minecraft.client.resources.language.I18n;
+import net.minecraft.client.resources.I18n;
+//import net.minecraft.network.chat.Component;
+//import net.minecraft.network.chat.MutableComponent;
+//import net.minecraft.network.chat.TextColor;
+//import net.minecraft.network.chat.TextComponent;
+//import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.util.text.Style;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
 
 public abstract class BaseOptionElementWidget<T extends OptionMenuElement> extends CommentedElementWidget<T> {
-	protected static final Component SET_TO_DEFAULT = new TranslatableComponent("options.iris.setToDefault").withStyle(ChatFormatting.GREEN);
-	protected static final Component DIVIDER = new TextComponent(": ");
+	protected static final ITextComponent SET_TO_DEFAULT = new TextComponentTranslation("options.iris.setToDefault").setStyle(new Style().setColor(TextFormatting.GREEN));
+	protected static final ITextComponent DIVIDER = new TextComponentString(": ");
 
-	protected MutableComponent unmodifiedLabel;
+	protected ITextComponent unmodifiedLabel;
 	protected ShaderPackScreen screen;
 	protected NavigationController navigation;
-	private MutableComponent label;
+	private ITextComponent label;
 
-	protected Component trimmedLabel;
-	protected Component valueLabel;
+	protected ITextComponent trimmedLabel;
+	protected ITextComponent valueLabel;
 
 	private boolean isLabelTrimmed;
 	private int maxLabelWidth;
@@ -54,8 +59,8 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 		this.trimmedLabel = null;
 	}
 
-	protected final void setLabel(MutableComponent label) {
-		this.label = label.copy().append(DIVIDER);
+	protected final void setLabel(ITextComponent label) {
+		this.label = label.createCopy().appendSibling(DIVIDER);
 		this.unmodifiedLabel = label;
 	}
 
@@ -67,18 +72,18 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 
 		// Determine the width of the value box
 		FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-		this.valueSectionWidth = Math.max(minValueSectionWidth, font.width(this.valueLabel) + 8);
+		this.valueSectionWidth = Math.max(minValueSectionWidth, font.getStringWidth(this.valueLabel.getFormattedText()) + 8);
 
 		// Determine maximum width of trimmed label
 		this.maxLabelWidth = (width - 8) - this.valueSectionWidth;
 
 		// Lazy init of trimmed label, and make sure it is only trimmed when necessary
-		if (this.trimmedLabel == null || font.width(this.label) > this.maxLabelWidth != isLabelTrimmed) {
+		if (this.trimmedLabel == null || font.getStringWidth(this.label.getFormattedText()) > this.maxLabelWidth != isLabelTrimmed) {
 			updateLabels();
 		}
 
 		// Set whether the label has been trimmed (used when updating label and determining whether to render tooltips)
-		this.isLabelTrimmed = font.width(this.label) > this.maxLabelWidth;
+		this.isLabelTrimmed = font.getStringWidth(this.label.getFormattedText()) > this.maxLabelWidth;
 	}
 
 	protected final void renderOptionWithValue(int x, int y, int width, int height, boolean hovered, float sliderPosition, int sliderWidth) {
@@ -104,9 +109,9 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 		FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
 		// Draw the label
-		font.drawShadow(this.trimmedLabel, x + 6, y + 7, 0xFFFFFF);
+		font.drawStringWithShadow(this.trimmedLabel.getFormattedText(), x + 6, y + 7, 0xFFFFFF);
 		// Draw the value label
-		font.drawShadow(this.valueLabel, (x + (width - 2)) - (int)(this.valueSectionWidth * 0.5) - (int)(font.width(this.valueLabel) * 0.5), y + 7, 0xFFFFFF);
+		font.drawStringWithShadow(this.valueLabel.getFormattedText(), (x + (width - 2)) - (int)(this.valueSectionWidth * 0.5) - (int)(font.getStringWidth(this.valueLabel.getFormattedText()) * 0.5), y + 7, 0xFFFFFF);
 	}
 
 	protected final void renderOptionWithValue(int x, int y, int width, int height, boolean hovered) {
@@ -121,9 +126,9 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 		}
 	}
 
-	protected final void renderTooltip(Component text, int mouseX, int mouseY, boolean hovered) {
+	protected final void renderTooltip(ITextComponent text, int mouseX, int mouseY, boolean hovered) {
 		if (hovered) {
-			ShaderPackScreen.TOP_LAYER_RENDER_QUEUE.add(() -> GuiUtil.drawTextPanel(Minecraft.getMinecraft().fontRenderer, text, mouseX + 2, mouseY - 16));
+			ShaderPackScreen.TOP_LAYER_RENDER_QUEUE.add(() -> GuiUtil.drawTextPanel(Minecraft.getMinecraft().fontRenderer, text.getFormattedText(), mouseX + 2, mouseY - 16));
 		}
 	}
 
@@ -132,20 +137,20 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 		this.valueLabel = createValueLabel();
 	}
 
-	protected final Component createTrimmedLabel() {
-		MutableComponent label = GuiUtil.shortenText(
+	protected final ITextComponent createTrimmedLabel() {
+		ITextComponent label = new TextComponentString(GuiUtil.shortenText(
 				Minecraft.getMinecraft().fontRenderer,
-				this.label.copy(),
-				this.maxLabelWidth);
+				this.label.getFormattedText(),
+				this.maxLabelWidth));
 
 		if (this.isValueModified()) {
-			label = label.withStyle(style -> style.withColor(TextColor.fromRgb(0xffc94a)));
+			label.setStyle(new Style().setColor(TextFormatting.YELLOW));
 		}
 
 		return label;
 	}
 
-	protected abstract Component createValueLabel();
+	protected abstract ITextComponent createValueLabel();
 
 	public abstract boolean applyNextValue();
 
@@ -158,25 +163,25 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 	public abstract @Nullable String getCommentKey();
 
 	@Override
-	public Optional<Component> getCommentTitle() {
+	public Optional<ITextComponent> getCommentTitle() {
 		return Optional.of(this.unmodifiedLabel);
 	}
 
 	@Override
-	public Optional<Component> getCommentBody() {
-		return Optional.ofNullable(getCommentKey()).map(key -> I18n.exists(key) ? new TranslatableComponent(key) : null);
+	public Optional<ITextComponent> getCommentBody() {
+		return Optional.ofNullable(getCommentKey()).map(key -> I18n.hasKey(key) ? new TextComponentTranslation(key) : null);
 	}
 
 	@Override
-	public boolean mouseClicked(double mx, double my, int button) {
-		if (button == GLFW.GLFW_MOUSE_BUTTON_1 || button == GLFW.GLFW_MOUSE_BUTTON_2) {
+	public boolean mouseClicked(int mx, int my, int button) {
+		if (button == 0 || button == 1) {
 			boolean refresh = false;
 
 			if (GuiScreen.isShiftKeyDown()) {
 				refresh = applyOriginalValue();
 			}
 			if (!refresh) {
-				if (button == GLFW.GLFW_MOUSE_BUTTON_1) {
+				if (button == 0) {
 					refresh = applyNextValue();
 				} else {
 					refresh = applyPreviousValue();

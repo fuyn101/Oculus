@@ -3,6 +3,7 @@
   "minVersion": "0.8",
   "package": "net.coderbot.iris.mixin.vertices",
   "compatibilityLevel": "JAVA_8",
+  "refmap": "mixins.oculus.refmap.json",
   "client": [
     "MixinBufferBuilder",
     "MixinVertexFormatElement",
@@ -10,8 +11,7 @@
     "MixinVertexFormat",
     "block_rendering.MixinBufferBuilder_SeparateAo",
     "block_rendering.MixinChunkRebuildTask",
-    "block_rendering.MixinClientLevel",
-    "immediate.MixinBufferSource",
+    "block_rendering.MixinWorldClient",
     "immediate.MixinLevelRenderer"
   ],
   "injectors": {

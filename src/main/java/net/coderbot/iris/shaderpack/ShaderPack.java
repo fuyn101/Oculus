@@ -13,6 +13,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+import lombok.Getter;
 import net.coderbot.iris.colorspace.ColorSpace;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
@@ -54,15 +55,21 @@ public class ShaderPack {
 	private final ProgramSet base;
 	private final Map<NamespacedId, ProgramSetInterface> overrides;
 
-	private final IdMap idMap;
-	private final LanguageMap languageMap;
-	private final EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap = new EnumMap<>(TextureStage.class);
+	@Getter
+    private final IdMap idMap;
+	@Getter
+    private final LanguageMap languageMap;
+	@Getter
+    private final EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap = new EnumMap<>(TextureStage.class);
 	private final CustomTextureData customNoiseTexture;
-	private final ShaderPackOptions shaderPackOptions;
-	private final OptionMenuContainer menuContainer;
+	@Getter
+    private final ShaderPackOptions shaderPackOptions;
+	@Getter
+    private final OptionMenuContainer menuContainer;
 
 	private final ProfileSet.ProfileResult profile;
-	private final String profileInfo;
+	@Getter
+    private final String profileInfo;
 
 	private final Function<AbsolutePackPath, String> sourceProvider;
 	private final ShaderProperties shaderProperties;
@@ -153,8 +160,7 @@ public class ShaderPack {
 
 		if (!invalidFeatureFlags.isEmpty()) {
 			if (Minecraft.getMinecraft().currentScreen instanceof ShaderPackScreen) {
-				Minecraft.getMinecraft().displayGuiScreen(new FeatureMissingErrorScreen(Minecraft.getMinecraft().currentScreen, new TextComponentTranslation("iris.unsupported.pack"), new TextComponentTranslation("iris.unsupported.pack.description", FeatureFlags.getInvalidStatus(invalidFlagList), invalidFeatureFlags.stream()
-					.collect(Collectors.joining(", ", ": ", ".")))));
+				Minecraft.getMinecraft().displayGuiScreen(new FeatureMissingErrorScreen(Minecraft.getMinecraft().currentScreen, new TextComponentTranslation("iris.unsupported.pack").getFormattedText(), new TextComponentTranslation("iris.unsupported.pack.description").getFormattedText()));
 			}
 			IrisApi.getInstance().getConfig().setShadersEnabledAndApply(false);
 		}
@@ -352,11 +358,7 @@ public class ShaderPack {
 		return profile.current.map(p -> p.name).orElse("Custom");
 	}
 
-	public String getProfileInfo() {
-		return profileInfo;
-	}
-
-	@Nullable
+    @Nullable
 	private static ProgramSet loadOverrides(boolean has, AbsolutePackPath path, Function<AbsolutePackPath, String> sourceProvider,
 											ShaderProperties shaderProperties, ShaderPack pack) {
 		if (has) {
@@ -482,27 +484,7 @@ public class ShaderPack {
 		}
 	}
 
-	public IdMap getIdMap() {
-		return idMap;
-	}
-
-	public EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> getCustomTextureDataMap() {
-		return customTextureDataMap;
-	}
-
-	public Optional<CustomTextureData> getCustomNoiseTexture() {
+    public Optional<CustomTextureData> getCustomNoiseTexture() {
 		return Optional.ofNullable(customNoiseTexture);
-	}
-
-	public LanguageMap getLanguageMap() {
-		return languageMap;
-	}
-
-	public ShaderPackOptions getShaderPackOptions() {
-		return shaderPackOptions;
-	}
-
-	public OptionMenuContainer getMenuContainer() {
-		return menuContainer;
 	}
 }

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.IntSupplier;
 
+import lombok.Getter;
 import net.coderbot.iris.mixin.GlStateManagerAccessor;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.texture.ITextureObject;
@@ -18,9 +19,8 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.mixin.LightTextureAccessor;
-import net.coderbot.iris.rendertarget.NativeImageBackedCustomTexture;
-import net.coderbot.iris.rendertarget.NativeImageBackedNoiseTexture;
+import net.coderbot.iris.rendertarget.BufferedImageBackedCustomTexture;
+import net.coderbot.iris.rendertarget.BufferedImageBackedNoiseTexture;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.texture.CustomTextureData;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
@@ -34,7 +34,8 @@ import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
 
 public class CustomTextureManager {
-	private final EnumMap<TextureStage, Object2ObjectMap<String, IntSupplier>> customTextureIdMap = new EnumMap<>(TextureStage.class);
+	@Getter
+    private final EnumMap<TextureStage, Object2ObjectMap<String, IntSupplier>> customTextureIdMap = new EnumMap<>(TextureStage.class);
 	private final IntSupplier noise;
 
 	/**
@@ -73,7 +74,7 @@ public class CustomTextureManager {
 		}).orElseGet(() -> {
 			final int noiseTextureResolution = packDirectives.getNoiseTextureResolution();
 
-			AbstractTexture texture = new NativeImageBackedNoiseTexture(noiseTextureResolution);
+			AbstractTexture texture = new BufferedImageBackedNoiseTexture(noiseTextureResolution);
 			ownedTextures.add(texture);
 
 			return texture::getGlTextureId;
@@ -82,16 +83,17 @@ public class CustomTextureManager {
 
 	private IntSupplier createCustomTexture(CustomTextureData textureData) throws IOException {
 		if (textureData instanceof CustomTextureData.PngData) {
-			AbstractTexture texture = new NativeImageBackedCustomTexture((CustomTextureData.PngData) textureData);
+			AbstractTexture texture = new BufferedImageBackedCustomTexture((CustomTextureData.PngData) textureData);
 			ownedTextures.add(texture);
 
 			return texture::getGlTextureId;
-		} else if (textureData instanceof CustomTextureData.LightmapMarker) {
-			// Special code path for the light texture. While shader packs hardcode the primary light texture, it's
-			// possible that a mod will create a different light texture, so this code path is robust to that.
-			return () ->
-				((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
-					.getLightTexture().getId();
+			// todo
+//		} else if (textureData instanceof CustomTextureData.LightmapMarker) {
+//			// Special code path for the light texture. While shader packs hardcode the primary light texture, it's
+//			// possible that a mod will create a different light texture, so this code path is robust to that.
+//			return () ->
+//				((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
+//					.getLightTexture().getId();
 		} else if (textureData instanceof CustomTextureData.ResourceData) {
 			CustomTextureData.ResourceData resourceData = (CustomTextureData.ResourceData) textureData;
 			String namespace = resourceData.getNamespace();
@@ -163,11 +165,7 @@ public class CustomTextureManager {
 		}
 	}
 
-	public EnumMap<TextureStage, Object2ObjectMap<String, IntSupplier>> getCustomTextureIdMap() {
-		return customTextureIdMap;
-	}
-
-	public Object2ObjectMap<String, IntSupplier> getCustomTextureIdMap(TextureStage stage) {
+    public Object2ObjectMap<String, IntSupplier> getCustomTextureIdMap(TextureStage stage) {
 		return customTextureIdMap.getOrDefault(stage, Object2ObjectMaps.emptyMap());
 	}
 
@@ -176,6 +174,6 @@ public class CustomTextureManager {
 	}
 
 	public void destroy() {
-		ownedTextures.forEach(AbstractTexture::close);
+		ownedTextures.forEach(AbstractTexture::deleteGlTexture);
 	}
 }

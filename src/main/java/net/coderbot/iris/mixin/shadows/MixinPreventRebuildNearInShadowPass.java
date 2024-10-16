@@ -50,7 +50,7 @@ public class MixinPreventRebuildNearInShadowPass {
 	@Group(name = "iris_MixinPreventRebuildNearInShadowPass", min = 1, max = 1)
 	@Inject(method = "setupTerrain",
 			at = @At(value = "INVOKE",
-					target = "me/jellysquid/mods/sodium/client/gl/device/RenderDevice.enterManagedCode ()V",
+					target = "Lme/jellysquid/mods/sodium/client/gl/device/RenderDevice;enterManagedCode()V",
 					remap = false),
 			require = 0)
 	private void iris$cannotInject(Entity viewEntity, double partialTicks, ICamera camera, int frameCount, boolean playerSpectator, CallbackInfo ci) {

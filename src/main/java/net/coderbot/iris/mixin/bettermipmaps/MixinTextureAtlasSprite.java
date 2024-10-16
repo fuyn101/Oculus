@@ -1,7 +1,6 @@
 package net.coderbot.iris.mixin.bettermipmaps;
 
 import nanolive.compat.CompatMemoryUtil;
-import nanolive.compat.NativeImage;
 import net.coderbot.iris.helpers.ColorSRGB;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureUtil;
@@ -36,13 +35,13 @@ public class MixinTextureAtlasSprite {
 		BufferedImage image = TextureUtil.readBufferedImage(stream);
 
 		if (name.getPath().contains("leaves")) {
-			// Don't ruin the textures of leaves on fast graphics, since they're supposed to have black pixels
+			// Don't ruin the textures of leaves on fast graphics, since they're supposed to have black pixels,
 			// apparently.
 			return image;
 		}
 
 		iris$fillInTransparentPixelColors(image);
-		return null;
+		return image;
 	}
 
 	/**
@@ -54,9 +53,11 @@ public class MixinTextureAtlasSprite {
 	 * black color does not leak over into sampling.
 	 */
 	@Unique
-	private static void iris$fillInTransparentPixelColors(BufferedImage nativeImage) {
-		final long ppPixel = getPointerRGBA(nativeImage);
-		final int pixelCount = nativeImage.getHeight() * nativeImage.getWidth();
+	private static void iris$fillInTransparentPixelColors(BufferedImage image) {
+		final int width = image.getWidth();
+		final int height = image.getHeight();
+		final int pixelCount = width * height;
+
 		// Calculate an average color from all pixels that are not completely transparent.
 		// This average is weighted based on the (non-zero) alpha value of the pixel.
 		float r = 0.0f;
@@ -65,20 +66,21 @@ public class MixinTextureAtlasSprite {
 
 		float totalWeight = 0.0f;
 
-		for (int pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
-			long pPixel = ppPixel + (pixelIndex * 4);
+		int[] pixels = new int[pixelCount];
+		image.getRGB(0, 0, width, height, pixels, 0, width);
 
-			int color = CompatMemoryUtil.memGetInt(pPixel);
-			int alpha = NativeImage.getA(color);
+		for (int pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
+			int color = pixels[pixelIndex];
+			int alpha = (color >> 24) & 0xFF;
 
 			// Ignore all fully-transparent pixels for the purposes of computing an average color.
 			if (alpha != 0) {
 				float weight = (float) alpha;
 
 				// Make sure to convert to linear space so that we don't lose brightness.
-				r += ColorSRGB.srgbToLinear(NativeImage.getR(color)) * weight;
-				g += ColorSRGB.srgbToLinear(NativeImage.getG(color)) * weight;
-				b += ColorSRGB.srgbToLinear(NativeImage.getB(color)) * weight;
+				r += ColorSRGB.srgbToLinear((color >> 16) & 0xFF) * weight;
+				g += ColorSRGB.srgbToLinear((color >> 8) & 0xFF) * weight;
+				b += ColorSRGB.srgbToLinear(color & 0xFF) * weight;
 
 				totalWeight += weight;
 			}
@@ -98,24 +100,15 @@ public class MixinTextureAtlasSprite {
 		int averageColor = ColorSRGB.linearToSrgb(r, g, b, 0);
 
 		for (int pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
-			long pPixel = ppPixel + (pixelIndex * 4);
-
-			int color = CompatMemoryUtil.memGetInt(pPixel);
-			int alpha = NativeImage.getA(color);
+			int color = pixels[pixelIndex];
+			int alpha = (color >> 24) & 0xFF;
 
 			// Replace the color values of pixels which are fully transparent, since they have no color data.
 			if (alpha == 0) {
-				CompatMemoryUtil.memPutInt(pPixel, averageColor);
+				pixels[pixelIndex] = averageColor;
 			}
 		}
-	}
 
-	private static long getPointerRGBA(BufferedImage nativeImage) {
-		if (nativeImage.format() != NativeImage.Format.RGBA) {
-			throw new IllegalArgumentException(String.format(Locale.ROOT,
-					"Tried to get pointer to RGBA pixel data on NativeImage of wrong format; have %s", nativeImage.format()));
-		}
-
-		return nativeImage.pixels;
+		image.setRGB(0, 0, width, height, pixels, 0, width);
 	}
 }

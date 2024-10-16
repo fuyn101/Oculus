@@ -2,6 +2,7 @@ package net.coderbot.batchedentityrendering.mixin;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+//import java.util.List;
 
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.vertex.VertexFormat;
@@ -13,34 +14,34 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.VertexFormat;
+//import com.mojang.blaze3d.vertex.BufferBuilder;
+//import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.coderbot.batchedentityrendering.impl.BufferBuilderExt;
 
 @Mixin(BufferBuilder.class)
 public class MixinBufferBuilder_SegmentRendering implements BufferBuilderExt {
-    @Shadow
+    @Unique
     private ByteBuffer buffer;
 
-    @Shadow
+    @Unique
     @Final
-    private List<BufferBuilder.DrawState> vertexCounts;
+    private List<BufferBuilder.State> vertexCounts;
 
-    @Shadow
+    @Unique
     private int lastRenderedCountIndex;
 
-    @Shadow
+    @Unique
     private int totalRenderedBytes;
 
-    @Shadow
+    @Unique
     private int nextElementByte;
 
-    @Shadow
+    @Unique
     private int totalUploadedBytes;
 
     @Override
-    public void setupBufferSlice(ByteBuffer buffer, BufferBuilder.DrawState drawState) {
+    public void setupBufferSlice(ByteBuffer buffer, BufferBuilder.State drawState) {
         // add the buffer slice
         this.buffer = buffer;
 
@@ -52,7 +53,7 @@ public class MixinBufferBuilder_SegmentRendering implements BufferBuilderExt {
         this.lastRenderedCountIndex = 0;
 
         // configure the build start (to avoid a warning message) and element offset (probably not important)
-        this.totalRenderedBytes = drawState.vertexCount() * drawState.format().getVertexSize();
+        this.totalRenderedBytes = drawState.getVertexCount() * drawState.getVertexFormat().getSize();
         this.nextElementByte = this.totalRenderedBytes;
 
         // should be zero, just making sure
@@ -86,13 +87,13 @@ public class MixinBufferBuilder_SegmentRendering implements BufferBuilderExt {
         // The final 3 booleans are also irrelevant.
     }
 
-    @Shadow
+    @Unique
     private VertexFormat format;
 
-    @Shadow
+    @Unique
     private int vertices;
 
-    @Shadow
+    @Unique
 	protected void ensureVertexCapacity() {
         throw new AssertionError("not shadowed");
     }
@@ -122,12 +123,12 @@ public class MixinBufferBuilder_SegmentRendering implements BufferBuilderExt {
         this.ensureVertexCapacity();
     }
 
-    @Inject(method = "end", at = @At("RETURN"))
+    @Inject(method = "finishDrawing", at = @At("RETURN"))
     private void batchedentityrendering$onEnd(CallbackInfo ci) {
         dupeNextVertex = false;
     }
 
-    @Inject(method = "nextElement", at = @At("RETURN"))
+    @Inject(method = "nextVertexFormatIndex", at = @At("RETURN"))
     private void batchedentityrendering$onNext(CallbackInfo ci) {
         if (dupeNextVertex) {
             dupeNextVertex = false;

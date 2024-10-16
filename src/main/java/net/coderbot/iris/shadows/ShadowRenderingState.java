@@ -1,8 +1,7 @@
 package net.coderbot.iris.shadows;
 
-import com.mojang.math.Matrix4f;
-
 import net.coderbot.iris.pipeline.ShadowRenderer;
+import net.minecraft.client.renderer.Matrix4f;
 
 public class ShadowRenderingState {
 	public static boolean areShadowsCurrentlyBeingRendered() {
@@ -10,6 +9,6 @@ public class ShadowRenderingState {
 	}
 
 	public static Matrix4f getShadowOrthoMatrix() {
-		return ShadowRenderer.ACTIVE ? ShadowRenderer.PROJECTION.copy() : null;
+		return ShadowRenderer.ACTIVE ? ShadowRenderer.PROJECTION : null;
 	}
 }

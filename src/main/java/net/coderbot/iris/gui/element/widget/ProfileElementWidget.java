@@ -2,8 +2,6 @@ package net.coderbot.iris.gui.element.widget;
 
 import java.util.Optional;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
@@ -13,20 +11,17 @@ import net.coderbot.iris.shaderpack.option.Profile;
 import net.coderbot.iris.shaderpack.option.ProfileSet;
 import net.coderbot.iris.shaderpack.option.menu.OptionMenuProfileElement;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
-import net.minecraft.ChatFormatting;
+import net.minecraft.util.text.*;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
+
 
 public class ProfileElementWidget extends BaseOptionElementWidget<OptionMenuProfileElement> {
-	private static final MutableComponent PROFILE_LABEL = new TranslatableComponent("options.iris.profile");
-	private static final MutableComponent PROFILE_CUSTOM = new TranslatableComponent("options.iris.profile.custom").withStyle(ChatFormatting.YELLOW);
+	private static final ITextComponent PROFILE_LABEL = new TextComponentTranslation("options.iris.profile");
+	private static final ITextComponent PROFILE_CUSTOM = new TextComponentTranslation("options.iris.profile.custom").setStyle(new Style().setColor(TextFormatting.YELLOW));
 
 	private Profile next;
 	private Profile previous;
-	private Component profileLabel;
+	private ITextComponent profileLabel;
 
 	public ProfileElementWidget(OptionMenuProfileElement element) {
 		super(element);
@@ -47,23 +42,23 @@ public class ProfileElementWidget extends BaseOptionElementWidget<OptionMenuProf
 		this.previous = result.previous;
 		Optional<String> profileName = result.current.map(p -> p.name);
 
-		this.profileLabel = profileName.map(name -> GuiUtil.translateOrDefault(new TextComponent(name), "profile." + name)).orElse(PROFILE_CUSTOM);
+		this.profileLabel = profileName.map(name -> GuiUtil.translateOrDefault(new TextComponentString(name), "profile." + name)).orElse(PROFILE_CUSTOM);
 	}
 
 	@Override
 	public void render(int x, int y, int width, int height, int mouseX, int mouseY, float tickDelta, boolean hovered) {
-		this.updateRenderParams(width, width - (Minecraft.getMinecraft().fontRenderer.width(PROFILE_LABEL) + 16));
+		this.updateRenderParams(width, width - (Minecraft.getMinecraft().fontRenderer.getStringWidth(PROFILE_LABEL.getFormattedText()) + 16));
 
 		this.renderOptionWithValue(x, y, width, height, hovered);
 	}
 
 	@Override
-	protected Component createValueLabel() {
+	protected ITextComponent createValueLabel() {
 		return this.profileLabel;
 	}
 
 	@Override
-	public Optional<Component> getCommentTitle() {
+	public Optional<ITextComponent> getCommentTitle() {
 		return Optional.of(PROFILE_LABEL);
 	}
 
@@ -79,7 +74,6 @@ public class ProfileElementWidget extends BaseOptionElementWidget<OptionMenuProf
 		}
 
 		Iris.queueShaderPackOptionsFromProfile(this.next);
-
 		return true;
 	}
 
@@ -102,5 +96,14 @@ public class ProfileElementWidget extends BaseOptionElementWidget<OptionMenuProf
 	@Override
 	public boolean isValueModified() {
 		return false;
+	}
+
+	@Override
+	public boolean mouseClicked(int mx, int my, int button) {
+		if (button == 1) {
+			return applyPreviousValue();
+		} else {
+			return applyNextValue();
+		}
 	}
 }

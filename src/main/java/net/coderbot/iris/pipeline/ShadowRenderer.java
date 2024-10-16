@@ -5,8 +5,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import net.coderbot.iris.mixin.RenderGlobalAccessor;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.Matrix4f;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -18,28 +20,18 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.math.BlockPos;
 import org.lwjgl.opengl.*;
-import org.lwjgl.opengl.GL20C;
-import org.lwjgl.opengl.GL30C;
 
 import com.google.common.collect.ImmutableList;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Matrix4f;
 
-import net.coderbot.batchedentityrendering.impl.BatchingDebugMessageHelper;
-import net.coderbot.batchedentityrendering.impl.DrawCallTrackingRenderBuffers;
-import net.coderbot.batchedentityrendering.impl.RenderBuffersExt;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
-import net.coderbot.iris.mixin.LevelRendererAccessor;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import net.coderbot.iris.shadows.CullingDataCache;
-import net.coderbot.iris.shadows.Matrix4fAccess;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.coderbot.iris.shadows.frustum.CullEverythingFrustum;
@@ -52,20 +44,8 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.CelestialUniforms;
 import net.coderbot.iris.vendored.joml.Vector3d;
 import net.coderbot.iris.vendored.joml.Vector4f;
-import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderBuffers;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
 import net.minecraft.client.renderer.culling.Frustum;
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.core.BlockPos;
-import net.minecraft.util.profiling.ProfilerFiller;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class ShadowRenderer {
 	public static Matrix4f MODELVIEW;
@@ -87,8 +67,6 @@ public class ShadowRenderer {
 	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
 	private final float sunPathRotation;
-	private final RenderBuffers buffers;
-	private final RenderBuffersExt renderBuffersExt;
 	private final List<MipmapPass> mipmapPasses = new ArrayList<>();
 	private final String debugStringOverall;
 	private FrustumHolder terrainFrustumHolder;
@@ -136,14 +114,6 @@ public class ShadowRenderer {
 
 		this.sunPathRotation = directives.getSunPathRotation();
 
-		this.buffers = new RenderBuffers();
-
-		if (this.buffers instanceof RenderBuffersExt) {
-			this.renderBuffersExt = (RenderBuffersExt) buffers;
-		} else {
-			this.renderBuffersExt = null;
-		}
-
 		configureSamplingSettings(shadowDirectives);
 	}
 
@@ -151,7 +121,7 @@ public class ShadowRenderer {
 		this.packHasVoxelization = packHasVoxelization || usesImages;
 	}
 
-	public static PoseStack createShadowModelView(float sunPathRotation, float intervalSize) {
+	public static void createShadowModelView(float sunPathRotation, float intervalSize) {
 		// Determine the camera position
 		Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
 
@@ -160,10 +130,7 @@ public class ShadowRenderer {
 		double cameraZ = cameraPos.z;
 
 		// Set up our modelview matrix stack
-		PoseStack modelView = new PoseStack();
-		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, cameraX, cameraY, cameraZ);
-
-		return modelView;
+		ShadowMatrices.createModelViewMatrix(getShadowAngle(), intervalSize, sunPathRotation, cameraX, cameraY, cameraZ);
 	}
 
 	private static WorldClient getLevel() {
@@ -196,10 +163,10 @@ public class ShadowRenderer {
 
 	private void configureSamplingSettings(PackShadowDirectives shadowDirectives) {
 		final ImmutableList<PackShadowDirectives.DepthSamplingSettings> depthSamplingSettings =
-			shadowDirectives.getDepthSamplingSettings();
+				shadowDirectives.getDepthSamplingSettings();
 
 		final ImmutableList<PackShadowDirectives.SamplingSettings> colorSamplingSettings =
-			shadowDirectives.getColorSamplingSettings();
+				shadowDirectives.getColorSamplingSettings();
 
 		GlStateManager.setActiveTexture(GL13.GL_TEXTURE4);
 
@@ -226,7 +193,7 @@ public class ShadowRenderer {
 		// They expected the driver to put the depth value in z, but it's supposed to only
 		// be available in r. So we set up the swizzle to fix that.
 		IrisRenderSystem.texParameteriv(glTextureId, GL11.GL_TEXTURE_2D, ARBTextureSwizzle.GL_TEXTURE_SWIZZLE_RGBA,
-			new int[] { GL11.GL_RED, GL11.GL_RED, GL11.GL_RED, GL11.GL_ONE });
+				new int[] { GL11.GL_RED, GL11.GL_RED, GL11.GL_RED, GL11.GL_ONE });
 
 		configureSampler(glTextureId, settings);
 	}
@@ -279,7 +246,7 @@ public class ShadowRenderer {
 
 			if (distance <= 0 || distance > Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
 				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
+						+ " blocks (capped by normal render distance)";
 				cullingInfo = "disabled " + reason;
 				return holder.setInfo(new NonCullingFrustum(), distanceInfo, cullingInfo);
 			} else {
@@ -301,7 +268,7 @@ public class ShadowRenderer {
 
 			if (distance >= Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
 				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
+						+ " blocks (capped by normal render distance)";
 				boxCuller = null;
 			} else {
 				distanceInfo = distance + " blocks " + setter;
@@ -319,13 +286,30 @@ public class ShadowRenderer {
 			Vector4f shadowLightPosition = new CelestialUniforms(sunPathRotation).getShadowLightPositionInWorldSpace();
 
 			net.coderbot.iris.vendored.joml.Vector3f shadowLightVectorFromOrigin =
-				new net.coderbot.iris.vendored.joml.Vector3f(shadowLightPosition.x(), shadowLightPosition.y(), shadowLightPosition.z());
+					new net.coderbot.iris.vendored.joml.Vector3f(shadowLightPosition.x(), shadowLightPosition.y(), shadowLightPosition.z());
 
 			shadowLightVectorFromOrigin.normalize();
 
-			return holder.setInfo(new AdvancedShadowCullingFrustum(((Matrix4fAccess) (Object) CapturedRenderingState.INSTANCE.getGbufferModelView()).convertToJOML(),
-				((Matrix4fAccess) (Object) CapturedRenderingState.INSTANCE.getGbufferProjection()).convertToJOML(), shadowLightVectorFromOrigin, boxCuller), distanceInfo, cullingInfo);
-
+			return holder.setInfo(new AdvancedShadowCullingFrustum( new net.coderbot.iris.vendored.joml.Matrix4f(
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m00, CapturedRenderingState.INSTANCE.getGbufferProjection().m01,
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m02, CapturedRenderingState.INSTANCE.getGbufferProjection().m03,
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m10, CapturedRenderingState.INSTANCE.getGbufferProjection().m11,
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m12, CapturedRenderingState.INSTANCE.getGbufferProjection().m13,
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m20, CapturedRenderingState.INSTANCE.getGbufferProjection().m21,
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m22, CapturedRenderingState.INSTANCE.getGbufferProjection().m23,
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m30, CapturedRenderingState.INSTANCE.getGbufferProjection().m31,
+					CapturedRenderingState.INSTANCE.getGbufferProjection().m32, CapturedRenderingState.INSTANCE.getGbufferProjection().m33
+			),
+					new net.coderbot.iris.vendored.joml.Matrix4f(
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m00, CapturedRenderingState.INSTANCE.getGbufferProjection().m01,
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m02, CapturedRenderingState.INSTANCE.getGbufferProjection().m03,
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m10, CapturedRenderingState.INSTANCE.getGbufferProjection().m11,
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m12, CapturedRenderingState.INSTANCE.getGbufferProjection().m13,
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m20, CapturedRenderingState.INSTANCE.getGbufferProjection().m21,
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m22, CapturedRenderingState.INSTANCE.getGbufferProjection().m23,
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m30, CapturedRenderingState.INSTANCE.getGbufferProjection().m31,
+							CapturedRenderingState.INSTANCE.getGbufferProjection().m32, CapturedRenderingState.INSTANCE.getGbufferProjection().m33
+					), shadowLightVectorFromOrigin, boxCuller), distanceInfo, cullingInfo);
 		}
 
 		return holder;
@@ -359,8 +343,8 @@ public class ShadowRenderer {
 		targets.copyPreTranslucentDepth();
 	}
 
-	private void renderEntities(LevelRendererAccessor levelRenderer, Frustum frustum, MultiBufferSource.BufferSource bufferSource, PoseStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
-		RenderManager dispatcher = levelRenderer.getEntityRenderDispatcher();
+	private void renderEntities(RenderGlobalAccessor worldRenderer, Frustum frustum, double cameraX, double cameraY, double cameraZ, float yaw, float tickDelta, boolean hasEntityFrustum) {
+		RenderManager dispatcher = worldRenderer.getRenderManager();
 
 		int shadowEntities = 0;
 
@@ -386,7 +370,8 @@ public class ShadowRenderer {
 		profiler.endStartSection("build geometry");
 
 		for (Entity entity : renderedEntities) {
-			levelRenderer.invokeRenderEntity(entity, cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
+			// todo not sure yaw
+			worldRenderer.getRenderManager().renderEntity(entity, cameraX, cameraY, cameraZ, yaw, tickDelta, hasEntityFrustum);
 			shadowEntities++;
 		}
 
@@ -395,8 +380,8 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderPlayerEntity(LevelRendererAccessor levelRenderer, Frustum frustum, MultiBufferSource.BufferSource bufferSource, PoseStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
-		RenderManager dispatcher = levelRenderer.getEntityRenderDispatcher();
+	private void renderPlayerEntity(RenderGlobalAccessor worldRenderer, Frustum frustum, double cameraX, double cameraY, double cameraZ, float yaw, float tickDelta, boolean hasEntityFrustum) {
+		RenderManager dispatcher = worldRenderer.getRenderManager();
 
 		profiler.startSection("cull");
 
@@ -412,17 +397,18 @@ public class ShadowRenderer {
 
 		if (!player.getPassengers().isEmpty()) {
 			for (int i = 0; i < player.getPassengers().size(); i++) {
-				levelRenderer.invokeRenderEntity(player.getPassengers().get(i), cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
+				// todo : not sure if yaw is correct
+				worldRenderer.getRenderManager().renderEntity(player.getPassengers().get(i), cameraX, cameraY, cameraZ, yaw, tickDelta, hasEntityFrustum);
 				shadowEntities++;
 			}
 		}
 
 		if (player.getRidingEntity() != null) {
-			levelRenderer.invokeRenderEntity(player.getRidingEntity(), cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
+			worldRenderer.getRenderManager().renderEntity(player.getRidingEntity(), cameraX, cameraY, cameraZ, yaw, tickDelta, hasEntityFrustum);
 			shadowEntities++;
 		}
 
-		levelRenderer.invokeRenderEntity(player, cameraX, cameraY, cameraZ, tickDelta, modelView, bufferSource);
+		worldRenderer.getRenderManager().renderEntity(player, cameraX, cameraY, cameraZ, yaw, tickDelta, hasEntityFrustum);
 
 		shadowEntities++;
 
@@ -431,7 +417,7 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	private void renderBlockEntities(MultiBufferSource.BufferSource bufferSource, PoseStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta, boolean hasEntityFrustum) {
+	private void renderBlockEntities(double cameraX, double cameraY, double cameraZ, float tickDelta, boolean hasEntityFrustum) {
 		profiler.startSection("build blockentities");
 
 		int shadowBlockEntities = 0;
@@ -450,7 +436,7 @@ public class ShadowRenderer {
 			}
 			//modelView.pushPose();
 			//modelView.translate(pos.getX() - cameraX, pos.getY() - cameraY, pos.getZ() - cameraZ);
-			TileEntityRendererDispatcher.instance.render(entity, pos.getX() - cameraX, pos.getY() - cameraY, pos.getZ() - cameraZ, tickDelta, bufferSource);
+			TileEntityRendererDispatcher.instance.render(entity, pos.getX() - cameraX, pos.getY() - cameraY, pos.getZ() - cameraZ, tickDelta);
 			//modelView.popPose();
 
 			shadowBlockEntities++;
@@ -461,7 +447,7 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
-	public void renderShadows(LevelRendererAccessor levelRenderer, ICamera playerCamera) {
+	public void renderShadows(RenderGlobalAccessor worldRenderer, ICamera playerCamera) {
 		if (IrisVideoSettings.getOverriddenShadowDistance(IrisVideoSettings.shadowDistance) == 0) {
 			return;
 		}
@@ -476,14 +462,15 @@ public class ShadowRenderer {
 		ACTIVE = true;
 
 		// NB: We store the previous player buffers in order to be able to allow mods rendering entities in the shadow pass (Flywheel) to use the shadow buffers instead.
-		RenderBuffers playerBuffers = levelRenderer.getRenderBuffers();
-		levelRenderer.setRenderBuffers(buffers);
+		// RenderBuffers playerBuffers = worldRenderer.getRenderBuffers();
+		// worldRenderer.setRenderBuffers(buffers);
 
 		visibleBlockEntities = new ArrayList<>();
 
 		// Create our camera
-		PoseStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
-		MODELVIEW = modelView.last().pose().copy();
+		// todo
+		// PoseStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
+		// MODELVIEW = modelView.last().pose().copy();
 		float[] projMatrix;
 		if (this.fov != null) {
 			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
@@ -492,13 +479,12 @@ public class ShadowRenderer {
 			projMatrix = ShadowMatrices.createOrthoMatrix(halfPlaneLength);
 		}
 
-		PROJECTION = new Matrix4f();
-		((Matrix4fAccess) (Object) PROJECTION).copyFromArray(projMatrix);
+		PROJECTION = new Matrix4f(projMatrix);
 
 		profiler.endStartSection("terrain_setup");
 
-		if (levelRenderer instanceof CullingDataCache) {
-			((CullingDataCache) levelRenderer).saveState();
+		if (worldRenderer instanceof CullingDataCache) {
+			((CullingDataCache) worldRenderer).saveState();
 		}
 
 		profiler.endStartSection("initialize frustum");
@@ -511,6 +497,8 @@ public class ShadowRenderer {
 		double cameraX = cameraPos.x();
 		double cameraY = cameraPos.y();
 		double cameraZ = cameraPos.z();
+		// todo not sure
+		float yaw = client.player.rotationYaw;
 
 		// Center the frustum on the player camera position
 		terrainFrustumHolder.getFrustum().setPosition(cameraX, cameraY, cameraZ);
@@ -528,17 +516,20 @@ public class ShadowRenderer {
 		// TODO: Only schedule a terrain update if the sun / moon is moving, or the shadow map camera moved.
 		// We have to ensure that we don't regenerate clouds every frame, since that's what needsUpdate ends up doing.
 		// This took up to 10% of the frame time before we applied this fix! That's really bad!
-		boolean regenerateClouds = levelRenderer.shouldRegenerateClouds();
-		((RenderGlobal) levelRenderer).setDisplayListEntitiesDirty();
-		levelRenderer.setShouldRegenerateClouds(regenerateClouds);
+//		int regenerateClouds = Minecraft.getMinecraft().gameSettings.shouldRenderClouds();
+		((RenderGlobal) worldRenderer).setDisplayListEntitiesDirty();
+//		Minecraft.getMinecraft().gameSettings.clouds = regenerateClouds;
 
 		// Execute the vanilla terrain setup / culling routines using our shadow frustum.
-		levelRenderer.invokeSetupRender(playerCamera, terrainFrustumHolder.getFrustum(), false, levelRenderer.getFrameId(), false);
+//		worldRenderer.invokeSetupTerrain(playerCamera, terrainFrustumHolder.getFrustum(), false, worldRenderer.getFrameId(), Minecraft.getMinecraft().debugRenderer.shouldRender());
+		// todo not sure
+		worldRenderer.invokeSetupTerrain(client.getRenderViewEntity(), client.getRenderPartialTicks(), playerCamera, client.getFrameTimer().getIndex(), Minecraft.getMinecraft().debugRenderer.shouldRender());
 
 		// Don't forget to increment the frame counter! This variable is arbitrary and only used in terrain setup,
 		// and if it's not incremented, the vanilla culling code will get confused and think that it's already seen
 		// chunks during traversal, and break rendering in concerning ways.
-		levelRenderer.setFrameId(levelRenderer.getFrameId() + 1);
+		// todo: not sure
+//		worldRenderer.setCloudTickCounter(worldRenderer.getCloudTickCounter() + 1);
 
 		client.renderChunksMany = wasChunkCullingEnabled;
 
@@ -548,9 +539,9 @@ public class ShadowRenderer {
 
 		// Render all opaque terrain unless pack requests not to
 		if (shouldRenderTerrain) {
-			levelRenderer.invokeRenderChunkLayer(BlockRenderLayer.SOLID, modelView, cameraX, cameraY, cameraZ);
-			levelRenderer.invokeRenderChunkLayer(BlockRenderLayer.CUTOUT, modelView, cameraX, cameraY, cameraZ);
-			levelRenderer.invokeRenderChunkLayer(BlockRenderLayer.CUTOUT_MIPPED, modelView, cameraX, cameraY, cameraZ);
+			worldRenderer.invokeRenderBlockLayer(BlockRenderLayer.SOLID);
+			worldRenderer.invokeRenderBlockLayer(BlockRenderLayer.CUTOUT);
+			worldRenderer.invokeRenderBlockLayer(BlockRenderLayer.CUTOUT_MIPPED);
 		}
 
 		profiler.endStartSection("entities");
@@ -577,24 +568,14 @@ public class ShadowRenderer {
 		//
 		// Note: We must use a separate BuilderBufferStorage object here, or else very weird things will happen during
 		// rendering.
-		if (renderBuffersExt != null) {
-			renderBuffersExt.beginLevelRendering();
-		}
-
-		if (buffers instanceof DrawCallTrackingRenderBuffers) {
-			((DrawCallTrackingRenderBuffers) buffers).resetDrawCounts();
-		}
-
-		MultiBufferSource.BufferSource bufferSource = buffers.bufferSource();
-
 		if (shouldRenderEntities) {
-			renderEntities(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderEntities(worldRenderer, entityShadowFrustum, cameraX, cameraY, cameraZ, yaw, tickDelta, hasEntityFrustum);
 		} else if (shouldRenderPlayer) {
-			renderPlayerEntity(levelRenderer, entityShadowFrustum, bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta);
+			renderPlayerEntity(worldRenderer, entityShadowFrustum, cameraX, cameraY, cameraZ, yaw, tickDelta, hasEntityFrustum);
 		}
 
 		if (shouldRenderBlockEntities) {
-			renderBlockEntities(bufferSource, modelView, cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
+			renderBlockEntities(cameraX, cameraY, cameraZ, tickDelta, hasEntityFrustum);
 		}
 
 		profiler.endStartSection("draw entities");
@@ -602,7 +583,6 @@ public class ShadowRenderer {
 		// NB: Don't try to draw the translucent parts of entities afterwards. It'll cause problems since some
 		// shader packs assume that everything drawn afterwards is actually translucent and should cast a colored
 		// shadow...
-		bufferSource.endBatch();
 
 		copyPreTranslucentDepth();
 
@@ -612,17 +592,13 @@ public class ShadowRenderer {
 		// It doesn't matter a ton, since this just means that they won't be sorted in the normal rendering pass.
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
-			levelRenderer.invokeRenderChunkLayer(BlockRenderLayer.TRANSLUCENT, modelView, cameraX, cameraY, cameraZ);
+			worldRenderer.invokeRenderBlockLayer(BlockRenderLayer.TRANSLUCENT);
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.
 		// worldRenderer.invokeRenderType(RenderType.getTripwire(), modelView, cameraX, cameraY, cameraZ);
 
-		if (renderBuffersExt != null) {
-			renderBuffersExt.endLevelRendering();
-		}
-
-		debugStringTerrain = ((RenderGlobal) levelRenderer).getDebugInfoRenders();
+		debugStringTerrain = ((RenderGlobal) worldRenderer).getDebugInfoRenders();
 
 		profiler.endStartSection("generate mipmaps");
 
@@ -632,11 +608,9 @@ public class ShadowRenderer {
 
 		restoreGlState();
 
-		if (levelRenderer instanceof CullingDataCache) {
-			((CullingDataCache) levelRenderer).restoreState();
+		if (worldRenderer instanceof CullingDataCache) {
+			((CullingDataCache) worldRenderer).restoreState();
 		}
-
-		levelRenderer.setRenderBuffers(playerBuffers);
 
 		ACTIVE = false;
 		profiler.endSection();
@@ -653,14 +627,15 @@ public class ShadowRenderer {
 		messages.add("[" + Iris.MODNAME + "] Shadow Distance Terrain: " + terrainFrustumHolder.getDistanceInfo() + " Entity: " + entityFrustumHolder.getDistanceInfo());
 		messages.add("[" + Iris.MODNAME + "] Shadow Culling Terrain: " + terrainFrustumHolder.getCullingInfo() + " Entity: " + entityFrustumHolder.getCullingInfo());
 		messages.add("[" + Iris.MODNAME + "] Shadow Terrain: " + debugStringTerrain
-			+ (shouldRenderTerrain ? "" : " (no terrain) ") + (shouldRenderTranslucent ? "" : "(no translucent)"));
+				+ (shouldRenderTerrain ? "" : " (no terrain) ") + (shouldRenderTranslucent ? "" : "(no translucent)"));
 		messages.add("[" + Iris.MODNAME + "] Shadow Entities: " + getEntitiesDebugString());
 		messages.add("[" + Iris.MODNAME + "] Shadow Block Entities: " + getBlockEntitiesDebugString());
 
-		if (buffers instanceof DrawCallTrackingRenderBuffers && (shouldRenderEntities || shouldRenderPlayer)) {
-			DrawCallTrackingRenderBuffers drawCallTracker = (DrawCallTrackingRenderBuffers) buffers;
-			messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
-		}
+		// todo
+//		if (buffers instanceof DrawCallTrackingRenderBuffers && (shouldRenderEntities || shouldRenderPlayer)) {
+//			DrawCallTrackingRenderBuffers drawCallTracker = (DrawCallTrackingRenderBuffers) buffers;
+//			messages.add("[" + Iris.MODNAME + "] Shadow Entity Batching: " + BatchingDebugMessageHelper.getDebugMessage(drawCallTracker));
+//		}
 	}
 
 	private String getEntitiesDebugString() {

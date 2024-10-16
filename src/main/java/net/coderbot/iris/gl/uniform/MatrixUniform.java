@@ -3,9 +3,8 @@ package net.coderbot.iris.gl.uniform;
 import java.nio.FloatBuffer;
 import java.util.function.Supplier;
 
+import net.minecraft.client.renderer.Matrix4f;
 import org.lwjgl.BufferUtils;
-
-import com.mojang.math.Matrix4f;
 
 import net.coderbot.iris.gl.IrisRenderSystem;
 
@@ -26,7 +25,7 @@ public class MatrixUniform extends Uniform {
 		Matrix4f newValue = value.get();
 
 		if (!newValue.equals(cachedValue)) {
-			cachedValue = newValue.copy();
+			cachedValue = newValue;
 
 			cachedValue.store(buffer);
 			buffer.rewind();

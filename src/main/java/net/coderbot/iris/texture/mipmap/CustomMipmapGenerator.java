@@ -1,15 +1,13 @@
 package net.coderbot.iris.texture.mipmap;
 
-import nanolive.compat.NativeImage;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-
 import javax.annotation.Nullable;
+import java.awt.image.BufferedImage;
 
 public interface CustomMipmapGenerator {
-	NativeImage[] generateMipLevels(NativeImage image, int mipLevel);
+	BufferedImage[] generateMipLevels(BufferedImage image, int mipLevel);
 
 	public interface Provider {
 		@Nullable
-		CustomMipmapGenerator getMipmapGenerator(TextureAtlasSprite.Info info, int atlasWidth, int atlasHeight);
+		CustomMipmapGenerator getMipmapGenerator(int width);
 	}
 }
